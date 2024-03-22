@@ -1,0 +1,329 @@
+import React, { useState, useEffect } from 'react';
+import { ethers } from "ethers";
+import Web3 from "web3";
+import PaymentContractABI from '../../../contract/build/contracts/PaymentContract.json';
+import axios from "axios";
+
+
+function Wallet() {
+  const [bills, setBills] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [showCreditCardForm, setShowCreditCardForm] = useState(false);
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [cardBalance, setCardBalance] = useState(0);
+  const [showCardInfo, setShowCardInfo] = useState(false);
+  const [showMetaMaskButton, setShowMetaMaskButton] = useState(false);
+  const [showConnectButton, setShowConnectButton] = useState(true); 
+  const [transactionHistory, setTransactionHistory] = useState([]);
+
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [userBalance, setUserBalance] = useState(null);
+  const [defaultAccount, setDefaultAccount] = useState(null);
+  const [web3, setWeb3] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+
+
+  
+    async function initWeb3() {
+      if (window.ethereum) {
+        const web3Instance = new Web3(window.ethereum);
+        setWeb3(web3Instance);
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          setAccounts(accounts);
+          const networkId = await web3Instance.eth.net.getId();
+          const deployedNetwork = PaymentContractABI.networks[networkId];
+          const contractInstance = new web3Instance.eth.Contract(
+            PaymentContractABI.abi,
+            deployedNetwork && deployedNetwork.address,
+          );
+          setContract(contractInstance);
+
+          // Fetch initial account balance
+          accountChanged(accounts[0]);
+
+          // Set up interval to periodically fetch balance
+          // const intervalId = setInterval(() => {
+          //   getAccountBalance(defaultAccount);
+          // }, 10000); // Refresh balance every 10 seconds
+
+          // // Clean up interval on component unmount
+          // return () => clearInterval(intervalId);
+        } catch (error) {
+          console.error('Error initializing Web3:', error);
+          setErrorMessage('Error initializing Web3. Please check your MetaMask connection.');
+        }
+      } else {
+        console.error('Web3 not detected');
+        setErrorMessage('Please install MetaMask to use this application.');
+      }
+    }
+
+
+
+  // Function to handle deposit funds
+  const depositFunds = async () => {
+    try {
+      const amount = cardBalance; // Amount in Wei (1 Ether)
+      const gasPrice = await web3.eth.getGasPrice();
+      const result = await contract.methods.depositFunds().send({
+        to: "0xe228f15832713Fa89904402e7b55c571e1e251b0",
+        from: "0x374CaBA94e5c0A9ca73dD50e6ADAedA0344Fae3A",
+        value: amount.toString(),
+        gasPrice: gasPrice.toString()
+      });
+      console.log('Deposit successful:', result);
+    } catch (error) {
+      console.error('Error depositing funds:', error);
+    }
+  };
+
+  useEffect(() => {
+    async function fetchBills() {
+      try {
+        const response = await axios.get('http://localhost:8080/billcreation');
+        setBills(response.data); 
+      } catch (error) {
+        console.error('Error fetching bills:', error);
+      }
+    }
+
+    fetchBills(); // Call the function
+  }, []); 
+
+
+  const connectToDigitalWallet = () => {
+    setShowCreditCardForm(!showCreditCardForm);
+    setShowConnectButton(false); // Hide "Connect to Digital Wallet" button
+  };
+  
+
+  const connectToMetaMask = async () => {
+    try {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' })
+        .then(result => {
+          accountChanged(result[0]);
+          setShowMetaMaskButton(false); 
+          // Call initWeb3 after connecting to MetaMask
+          initWeb3();
+        });            
+      } else {
+        setErrorMessage("Please install MetaMask first!");
+      }
+    } catch (error) {
+      console.error("Error connecting to MetaMask:", error);
+      setErrorMessage("An error occurred while connecting to MetaMask. Please try again.");
+    }
+  };
+
+
+
+const accountChanged = (accountName) => {
+    setDefaultAccount(accountName);
+    getAccountBalance(accountName);
+}
+
+const getAccountBalance = (account) => {
+    window.ethereum.request({method: 'eth_getBalance', params: [account, 'latest']})
+    .then(balance => {
+        setUserBalance(ethers.utils.formatEther(balance));
+        setShowCardInfo(true); 
+    })
+    .catch(error => {
+        setErrorMessage(error.message);
+    });
+};
+
+  const handleCreditCardSubmit = (event) => {
+    event.preventDefault();
+
+    const cardNumber = event.target[1].value; 
+    const expirationDate = event.target[2].value; 
+    const cvv = event.target[3].value; 
+
+    const enteredCardHolderName = event.target[0].value;
+    setCardHolderName(enteredCardHolderName);
+    setCardBalance(100000000000000000); 
+
+    setShowCreditCardForm(false);
+    setShowCardInfo(true);
+    setShowMetaMaskButton(true);
+  };
+
+  const cancelCardConnection = () => {
+    setShowCreditCardForm(false);
+    setShowCardInfo(false);
+    setShowMetaMaskButton(false);
+    setShowConnectButton(true); 
+  };
+
+  const handleCardHolderNameChange = (event) => {
+    setCardHolderName(event.target.value);
+  };
+
+  const handlePayButtonClick = async (bill) => {
+    try {
+      // Get the amount to be paid (total_cost of the bill)
+      const amountToPay = bill.total_cost;
+  
+      // Check if MetaMask is installed and connected
+      if (!window.ethereum) {
+        throw new Error('MetaMask not detected');
+      }
+  
+      // Prompt user to confirm transaction
+      const transactionHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          to: "0x374CaBA94e5c0A9ca73dD50e6ADAedA0344Fae3A",
+          from: "0xe228f15832713Fa89904402e7b55c571e1e251b0",
+          value: amountToPay.toString(),
+          gasPrice: '250000',
+          gas: '21000'
+        }],
+      });
+  
+      // Check if transactionHash is returned
+      if (!transactionHash) {
+        throw new Error('Transaction canceled or failed');
+      }
+  
+      const response = await axios.put(`http://localhost:8080/billcreation/${bill.bill_id}`, { payment_confirmation: 1 });
+  
+      console.log(bill.bill_id);
+      // Check if payment confirmation was successfully updated
+      if (response.status === 200) {
+        console.log('Payment confirmation updated successfully');
+      } else {
+        throw new Error('Failed to update payment confirmation');
+      }
+  
+    } catch (error) {
+      // Check if MetaMask is not connected or transaction is canceled
+      if (error.message === 'MetaMask not detected') {
+        setErrorMessage('MetaMask not detected. Please install MetaMask to make payments.');
+      } else if (error.message === 'Transaction canceled or failed') {
+        console.log('Transaction canceled or failed');
+        // Handle transaction cancellation or failure, e.g., show message to the user
+      } else {
+        console.error('Error paying bill:', error);
+        // Handle other errors, e.g., show error message to the user
+      }
+    }
+  };
+  
+  return (
+    <div>
+      <h1>Payment page</h1>
+      {showCardInfo && (
+        <div className="card-info-box">
+          <span className="card-holder">Account Address: {defaultAccount}</span><br />
+          <span className="balance">Account Balance: {userBalance} ETH</span>
+          <button onClick={depositFunds}>Deposit</button>
+        </div>
+      )}
+      {showConnectButton && ( // Conditional rendering for "Connect to Digital Wallet" button
+        <button onClick={showCreditCardForm ? cancelCardConnection : connectToDigitalWallet} className="custom-button primary">
+          {showCreditCardForm ? "Cancel" : "Connect to Digital Wallet"}
+        </button>
+      )}
+
+      {/* Connect to MetaMask button */}
+      {showMetaMaskButton && (
+        <button className="custom-button secondary" onClick={connectToMetaMask}>
+          Connect to MetaMask
+        </button>
+      )}
+
+      {/* Credit card input form */}
+      {showCreditCardForm && (
+        <div className="credit-card-form-container">
+          
+          <form onSubmit={handleCreditCardSubmit}>
+            <input type="text" placeholder="Card holder's name" required />
+            <input type="text" placeholder="Card Number" required />
+            <input type="text" placeholder="Expiration Date" required />
+            <input type="text" placeholder="CVV" required />
+            <input type="submit" value="Submit" className="custom-button primary" />
+          </form>
+        </div>
+      )}
+      
+      <div className="appointment-page" style={{ marginTop: '50px'}}>
+      <h2>Bill Payment</h2>
+        <table className="custom-table">
+          <thead>
+            <tr className="appointmenthead">
+              <th>Bill ID</th>
+              <th>Patient ID</th>
+              <th>Doctor ID</th>
+              <th>Doctor's Name</th>
+              <th>Patient's Name</th>
+              <th>Bill Date</th>
+              <th>Bill Cost</th>
+              <th>Bill Description</th>
+              <th>Payment Confirmation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bills.map((bill) => (
+              // Only render bills with payment_confirmation === 0
+              bill.payment_confirmation === 0 && (
+                <tr key={bill.bill_id}>
+                  <td>{bill.bill_id}</td>
+                  <td>{bill.PID}</td>
+                  <td>{bill.DID}</td>
+                  <td>{bill.Doctors_name}</td>
+                  <td>{bill.Patients_name}</td>
+                  <td>{bill.bill_date}</td>
+                  <td>{bill.total_cost}</td>
+                  <td>{bill.bill_desc}</td>
+                  {/* Render Pay button */}
+                  <td>
+                    <button onClick={() => handlePayButtonClick(bill)}>Pay</button>
+                  </td>
+                </tr>
+              )
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className="appointment-page" style={{ marginTop: '50px'}}>
+      <h2>Transaction History</h2>
+        <table className="custom-table">
+          <thead>
+            <tr className="appointmenthead">
+              <th>Transaction ID</th>
+              <th>Doctor ID</th>
+              <th>Patient ID</th>
+              <th>Doctor's Name</th>
+              <th>Cost</th>
+              <th>Transaction Date</th>
+              <th>Transaction Description</th>
+              <th>Transaction Status</th>
+            </tr>
+          </thead>
+          <tbody>
+          {transactionHistory.map((transaction) => (
+            <tr key={transaction.bill_id}>
+              <td>{transaction.bill_id}</td>
+              <td>{transaction.PID}</td>
+              <td>{transaction.DID}</td>
+              <td>{transaction.Doctors_name}</td>
+              <td>{transaction.Patients_name}</td>
+              <td>{transaction.bill_date}</td>
+              <td>{transaction.total_cost}</td>
+              <td>{transaction.bill_desc}</td>
+            </tr>
+          ))}
+        </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default Wallet;

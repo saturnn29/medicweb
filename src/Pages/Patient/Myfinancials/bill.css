@@ -1,0 +1,110 @@
+.bill-page {
+  margin: 0 auto;
+  width: 60%;
+}
+
+.bill-h1 {
+  margin-top: 5%;
+  margin-bottom: 2%;
+  background-color: rgb(255, 255, 255);
+  color: rgb(0, 0, 0);
+  border-radius: 8px;
+  padding-left: 50px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  font-size: 25px;
+  border: 0.2rem solid var(--green); 
+  border-radius: 5px;
+  box-shadow: .6rem .6rem 0 rgba(22, 160, 133, 0.3);
+}
+
+.bill-thead {
+  position: sticky;
+  top: -10px;
+  background-color: rgb(255, 255, 255);
+  text-align: center;
+  border: 0.2rem solid var(--green); 
+  border-radius: 5px;
+  box-shadow: .4rem .4rem 0 rgba(22, 160, 133, 0.3);
+}
+
+.bill-no-h {
+  align-content: 5%;
+}
+
+.bill-hospital-h {
+  width: 40%;
+}
+
+.bill-time-h {
+  width: 40%;
+}
+
+.bill-status-h {
+  width: 15%;
+}
+
+.bill-tb-head {
+  text-align: center;
+  background-color: rgb(255, 255, 255);
+  border-spacing: 10px;
+  cursor: pointer;
+  border: 0.2rem solid var(--green); 
+  border-radius: 5px;
+  box-shadow: .6rem .6rem 0 rgba(22, 160, 133, 0.3);
+}
+
+.bill-table {
+  margin: 0 auto;
+  width: 100%;
+}
+
+.bill-head {
+  text-align: center;
+  background-color: rgb(185, 185, 185);
+  border-spacing: 10px;
+}
+
+.bill-body {
+  text-align: center;
+}
+
+.bill-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0, 1, 0, 1);
+}
+
+.bill-content.show {
+  height: auto;
+  max-height: 9999px;
+  transition: all 0.5s cubic-bezier(1, 0, 1, 0);
+}
+
+.bill-table {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 1rem;
+  border-collapse: collapse;
+}
+
+.bill-table th,
+.bill-table td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-top: 1px solid #eceeef;
+}
+
+.bill-table .bill-head {
+  background-color: rgb(255, 255, 255);
+  border: 0.2rem solid var(--green); 
+  border-radius: 5px;
+  box-shadow: .6rem .6rem 0 rgba(22, 160, 133, 0.3);
+}
+
+.bill-table .bill-body {
+  background-color: rgb(255, 255, 255);
+  border: 0.2rem solid var(--green); 
+  border-radius: 5px;
+  box-shadow: .6rem .6rem 0 rgba(22, 160, 133, 0.3);
+}
